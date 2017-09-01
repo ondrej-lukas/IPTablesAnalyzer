@@ -52,6 +52,19 @@ def process_honeypots(verbose=0):
 							if verbose > 0:
 								print "\tPORT: {}, REDIRECTED TO: {}, PROTOCOL: {} (pkts: {}, bytes: {})".format(rule[9], rule[10], rule[3], packets, bytes)
 							hp_ports.append(rule[9])
+
+	#check if there are any TARPIT honeypots
+	chains = subprocess.Popen('iptables -vnL -t filter', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()
+	input_list = chains[0].split("Chain")
+	for item in input_list:
+		parsed = parse_chain(item)
+		if parsed:
+			if "zone_wan_input" in parsed['name']:
+				for rule in parsed["rules"]:
+					if rule[2].lower() == "tarpit":
+						if verbose > 0:
+							print "\tPORT: {}, TARPIT, PROTOCOL: {} (pkts: {}, bytes: {})".format(rule[9], rule[3], rule[0],rule[1])
+						hp_ports.append(rule[9])
 	return hp_ports
 						
 
