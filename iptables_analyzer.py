@@ -1,4 +1,4 @@
-#!/usr/bin/python
+	#!/usr/bin/python
 #Author: Ondrej Lukas - ondrej.lukas95@gmail.com, lukasond@fel.cvut.cz
 import subprocess
 import re
@@ -149,11 +149,25 @@ def process_accepted_ports(verbose=0):
 		if parsed:
 			if "zone_wan_input" in parsed['name']:
 				for rule in parsed["rules"]:
-					if rule[2] == "accept" and len(rule) > 9:
+					#for now, we only consider TCP/IP
+					if rule[2].lower() == "accept" and rule[3].lower() == 'tcp':
 						if verbose > 0:
 							print "\tPORT: {},PROTOCOL: {} (pkts: {}, bytes: {})".format(rule[-1], rule[3], rule[0], rule[1])
 						accepted_ports.append(rule[-1])
 	return accepted_ports
+
+
+def get_output(verbose=0):
+	output = {}
+	for port in process_honeypots(verbose):
+		output[port] = 'honeypot-turris'
+	#get data from production ports (ports being redirected to the locat network)
+	for port in process_production_ports(verbose):
+		output[port] = 'production'
+	#get data from accepted ports
+	for port in process_accepted_ports(verbose):
+		output[port] = 'accepted'
+	return output
 
 if __name__ == '__main__':
 
