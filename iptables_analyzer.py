@@ -64,8 +64,8 @@ def process_honeypots(verbose=0):
 						if verbose > 0:
 							print "\tPORT: {}, TARPIT, PROTOCOL: {} (pkts: {}, bytes: {})".format(rule[9], rule[3], rule[0],rule[1])
 						hp_ports.append(rule[9])
-	return hp_ports						
-
+	return hp_ports
+						
 """
 	This function parses nat table of IPTABLES and extracts ports being redirected
 """
@@ -167,6 +167,10 @@ def process_accepted_ports(verbose=0):
 						accepted_ports.append(rule[-1])
 	return accepted_ports
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9d3f82f28c70adaf0b992a7d616c38e929799d1c
 def get_output(verbose=0):
 	output = {}
 	for port in process_honeypots(verbose):
