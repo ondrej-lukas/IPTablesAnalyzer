@@ -1,4 +1,4 @@
-#!/usr/bin/python
+	#!/usr/bin/python
 #Author: Ondrej Lukas - ondrej.lukas95@gmail.com, lukasond@fel.cvut.cz
 import subprocess
 import re
@@ -31,7 +31,6 @@ def process_honeypots(verbose=0):
 		if parsed:
 			for rule in parsed["rules"]:
 				if len(rule) > 10:
-					#print "Rule: " + parsed["name"]
 					#is the port open?
 					if len(subprocess.Popen('netstat -anp | grep '+ rule[10], shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[0]):
 						data = (rule[0], rule[1])
@@ -52,8 +51,20 @@ def process_honeypots(verbose=0):
 							if verbose > 0:
 								print "\tPORT: {}, REDIRECTED TO: {}, PROTOCOL: {} (pkts: {}, bytes: {})".format(rule[9], rule[10], rule[3], packets, bytes)
 							hp_ports.append(rule[9])
-	return hp_ports
-						
+
+	#check if there are any TARPIT honeypots
+	chains = subprocess.Popen('iptables -vnL -t filter', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate()
+	input_list = chains[0].split("Chain")
+	for item in input_list:
+		parsed = parse_chain(item)
+		if parsed:
+			if "zone_wan_input" in parsed['name']:
+				for rule in parsed["rules"]:
+					if rule[2].lower() == "tarpit":
+						if verbose > 0:
+							print "\tPORT: {}, TARPIT, PROTOCOL: {} (pkts: {}, bytes: {})".format(rule[9], rule[3], rule[0],rule[1])
+						hp_ports.append(rule[9])
+	return hp_ports						
 
 """
 	This function parses nat table of IPTABLES and extracts ports being redirected
@@ -100,6 +111,7 @@ def parse_chain(chain):
 			return {'name':name, 'headers':headers, 'rules':data}
 		else:
 			return None
+
 def process_production_ports(verbose=0):
 	if verbose > 0:
 		print "\nACTIVE PRODUCTION PORTS:"
@@ -137,7 +149,6 @@ def parse_DNAT_chain(chain):
 	else:
 		return None
 
-
 def process_accepted_ports(verbose=0):
 	if verbose > 0:
 		print "\nACCEPTED PORTS:"
@@ -149,17 +160,30 @@ def process_accepted_ports(verbose=0):
 		if parsed:
 			if "zone_wan_input" in parsed['name']:
 				for rule in parsed["rules"]:
-					if rule[2] == "accept" and len(rule) > 9:
+					#for now, we only consider TCP/IP
+					if rule[2].lower() == "accept" and rule[3].lower() == 'tcp':
 						if verbose > 0:
 							print "\tPORT: {},PROTOCOL: {} (pkts: {}, bytes: {})".format(rule[-1], rule[3], rule[0], rule[1])
 						accepted_ports.append(rule[-1])
 	return accepted_ports
 
+def get_output(verbose=0):
+	output = {}
+	for port in process_honeypots(verbose):
+		output[port] = 'honeypot-turris'
+	#get data from production ports (ports being redirected to the locat network)
+	for port in process_production_ports(verbose):
+		output[port] = 'production'
+	#get data from accepted ports
+	for port in process_accepted_ports(verbose):
+		output[port] = 'accepted'
+	return output
+
 if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-v', '--verbose', help='Amount of verbosity. This shows more info about the results.', action='store', default=0, required=False, type=int)
-	parser.add_argument('-f', '--folder', help='Path to the target folder.', action='store', default='/etc/LUDUS/', required=False, type=str)
+	parser.add_argument('-f', '--folder', help='Path to the target folder.', action='store', default='/etc/ludus/', required=False, type=str)
 	parser.add_argument('-n', '--filename', help='Name of the output file.', action='store', default='ports_type', required=False, type=str)
 	
 
